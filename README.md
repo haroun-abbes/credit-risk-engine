@@ -77,6 +77,20 @@ Chaque résultat passe 13 contrôles de cohérence avant d'être affiché
 (`sql/11_analytics_checks.sql`) : taux entre 0 et 100 %, courbes cumulées croissantes,
 lignes de matrice à 100 %, somme des segments égale au total, etc.
 
+### Résultats clés
+
+- **Taux de défaut observé : 10,0 %** des 200 000 prêts (90 jours de retard ou sortie avec perte), dont 14,3 % pour la cohorte 2006, 16,4 % pour 2007, 3,4 % pour 2012 et 5,8 % pour 2017.
+- **À 5 ans d'ancienneté, la cohorte 2007 a fait 10 fois plus défaut que la cohorte 2012** (13,3 % contre 1,3 %) : profils plus risqués à l'octroi et crise immobilière dès les premières années.
+- **Le score FICO est fortement discriminant** : 33 % de défaut sous 620, contre 2,5 % à 780 et plus, dans toutes les cohortes.
+- **La LTV seule sous-estimait le risque d'avant-crise** : en 2006-2007, 2,4 fois plus de prêts dépassent 95 % en CLTV (prêts secondaires inclus) qu'en LTV.
+- **Un retard de 30 jours multiplie par 28 le risque de défaut à 12 mois** ; 39 % des prêts à 60 jours de retard passent à 90 jours le mois suivant.
+- **Sévérité des pertes : 49,5 %** de l'encours en moyenne, de 52 % pour 2006 à 14 % pour 2017, selon le niveau des prix immobiliers au moment de la revente.
+- **Effet Covid** : la cohorte 2017 fait davantage défaut que 2012 (5,8 % contre 3,4 %) mais ne perd presque rien (0,2 % de sorties avec perte). Les moratoires de 2020 apparaissent comme des retards, puis se régularisent.
+
+### Limites
+
+Prêts immobiliers américains conformes (pas de crédit aux entreprises) ; pas de critère d'improbabilité de paiement ; moratoires Covid comptés en défaut ; 994 prêts (0,5 %) dont la date de première échéance, réinitialisée par Freddie Mac, a été reconstituée à partir du trimestre d'octroi.
+
 ![Courbes de vintage](docs/figures/01_vintage_curves.png)
 ![Signaux d'alerte](docs/figures/05_early_warning_signals.png)
 

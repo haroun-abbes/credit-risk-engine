@@ -170,7 +170,14 @@ def fig_roll_rates(con, out: Path) -> None:
     for i in range(m.shape[0]):
         for j in range(m.shape[1]):
             v = m.values[i, j]
-            label = "0 %" if v == 0 else (f"{fr(100 * v, 2)} %" if v < 0.01 else f"{fr(100 * v, 1)} %")
+            if v == 0:
+                label = "0 %"
+            elif v < 0.0001:                      # évite d'afficher « 0,00 % » pour un taux non nul
+                label = "< 0,01 %"
+            elif v < 0.01:
+                label = f"{fr(100 * v, 2)} %"
+            else:
+                label = f"{fr(100 * v, 1)} %"
             ax.text(j, i, label, ha="center", va="center", fontsize=9.5,
                     color="white" if v > 0.55 else INK)
     ax.set_xticks(range(len(cols)), [c.replace("Sortie avec perte", "Sortie\navec perte")
@@ -191,9 +198,12 @@ def fig_roll_rates(con, out: Path) -> None:
 
 # --- 4. Risque de défaut à 12 mois et chômage ------------------------------------
 def fig_pd12_macro(con, out: Path) -> None:
-    df = con.execute("SELECT period, pd12, unemployment_rate FROM v_pd12_by_month ORDER BY period").df()
+    df = con.execute("""SELECT period, pd12, n_performing, unemployment_rate
+                        FROM v_pd12_by_month ORDER BY period""").df()
     if df.empty:
         return
+    # on écarte les tout premiers mois, où trop peu de prêts sont observés pour un taux fiable
+    df = df[df["n_performing"] >= 0.05 * df["n_performing"].max()].reset_index(drop=True)
     peak = df.loc[df["pd12"].idxmax()]
     has_macro = df["unemployment_rate"].notna().any()
     title = (f"Le risque de défaut à 12 mois a culminé à {fr(100 * peak['pd12'])} % "
