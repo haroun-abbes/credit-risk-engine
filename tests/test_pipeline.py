@@ -79,3 +79,27 @@ def test_phase3_pd_model(tmp_path):
     con.close()
     assert (tmp_path / "model" / "pd_model_report.md").exists()
     assert len(list((tmp_path / "figures").glob("*.png"))) == 4
+
+
+def test_phase4_ecl(tmp_path):
+    """Phase 4 : calibrage, staging IFRS 9, ECL, migrations, capital et contrôles E01-E09."""
+    env = {**os.environ, "CRE_DATA_DIR": str(tmp_path)}
+    assert run("tests/make_fake_sample.py", env, str(tmp_path / "raw"), "1500").returncode == 0
+    assert run("src/load_freddie.py", env).returncode == 0
+    assert run("src/build_analytics.py", env).returncode == 0
+    assert run("src/train_pd_model.py", env, "--figures-out", str(tmp_path / "figures"),
+               "--model-out", str(tmp_path / "model")).returncode == 0
+
+    ecl = run("src/build_ecl.py", env, "--model", str(tmp_path / "model" / "pd_model.json"),
+              "--figures-out", str(tmp_path / "figures"), "--model-out", str(tmp_path / "model"))
+    assert ecl.returncode == 0, ecl.stdout + ecl.stderr   # aucun contrôle E01-E07 en échec
+
+    con = duckdb.connect(str(tmp_path / "processed" / "credit_risk.duckdb"), read_only=True)
+    n, n_stages, bad = con.execute("""SELECT count(*), count(DISTINCT stage),
+                                             count(*) FILTER (WHERE ecl < 0 OR ecl > ead)
+                                      FROM ecl_results""").fetchone()
+    assert n > 0 and n_stages >= 2 and bad == 0
+    assert abs(con.execute("SELECT sum(weight) FROM ecl_scenarios").fetchone()[0] - 1) < 1e-9
+    con.close()
+    assert (tmp_path / "model" / "ecl_report.md").exists()
+    assert len(list((tmp_path / "figures").glob("1[0-3]_*.png"))) == 4

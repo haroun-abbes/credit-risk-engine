@@ -4,7 +4,7 @@ Surveillance du risque de crédit d'un portefeuille de prêts immobiliers à par
 données granulaires de Freddie Mac (Single-Family Loan-Level Dataset) : taux de défaut,
 concentrations, signaux d'alerte, migrations de notation, perte attendue et staging IFRS 9.
 
-> Projet en cours de construction. Phase actuelle : **3 — modèle de PD et notation interne**.
+> Projet en cours de construction. Phase actuelle : **4 — perte attendue IFRS 9 et capital réglementaire**.
 
 ## Problématique
 
@@ -52,6 +52,9 @@ python src/make_figures.py          # graphiques dans docs/figures/
 
 # phase 3 : modèle de PD et notation
 python src/train_pd_model.py        # modèle, notes R1-R8, rapport dans docs/model/
+
+# phase 4 : calibrage, perte attendue IFRS 9, capital
+python src/build_ecl.py             # staging, ECL, migrations, RWA, rapport dans docs/model/
 ```
 
 Sans les vraies données, on peut tester toute la chaîne sur de faux fichiers :
@@ -124,6 +127,36 @@ Le rapport complet, régénéré à chaque entraînement, est dans
 
 ![Échelle de notation](docs/figures/09_rating_scale.png)
 
+## Perte attendue IFRS 9 et capital (phase 4)
+
+**Calibrage** : la PD du modèle est recalée sur le taux de défaut moyen de long terme (PD TTC),
+puis rendue dépendante de la conjoncture avec le modèle à un facteur de Vasicek (PD PIT) :
+le facteur systémique de chaque année est relié au chômage et aux prix immobiliers (2020 exclue).
+**Paramètres de perte** : LGD par tranche de CLTV en tenant compte des guérisons, LGD de crise
+(défauts 2008-2011), facteur d'EAD, taux de remboursement anticipé.
+**Staging IFRS 9** : Stage 3 = défaut ; Stage 2 = retard de 30 jours ou plus, période probatoire de
+24 mois après un défaut ou une restructuration, plan d'aide, ou dégradation significative de la note.
+**ECL** : 12 mois (Stage 1) ou à maturité (Stage 2), avec amortissement, survie, actualisation au taux
+du prêt et retour progressif de la PD PIT vers la PD TTC ; 3 scénarios pondérés.
+**Compléments** : matrices de migration annuelles (crise / période calme) et capital IRB (RWA).
+
+Rapport complet : [`docs/model/ecl_report.md`](docs/model/ecl_report.md).
+
+### Résultats de la provision (date d'arrêté : 01/03/2026)
+
+- Provision IFRS 9 : **21,7 M$** pour 2 880 M$ d'encours actif (0,75 %).
+- Le Stage 2 pèse 3,5 % de l'encours mais **33 % de la provision** ; couverture 0,28 % (Stage 1),
+  7,0 % (Stage 2) et 24,8 % (Stage 3).
+- Scénario sévère (+5 points de chômage, −15 % sur les prix immobiliers) : 35,5 M$, soit 1,9 fois le central.
+- LGD de 25,8 % (46,5 % des défauts guérissent sans perte), 36,8 % en crise ; LGD plus faible au-delà
+  de 80 % de CLTV, grâce à l'assurance hypothécaire.
+- Capital IRB : RWA de 1 443 M$ (densité 50,6 %), soit 115,5 M$ de fonds propres à 8 %.
+- Migrations : 52 % des prêts gardent leur classe en crise (2008-2010), contre 71 % en période calme ;
+  95 % des dégradations hors défaut coïncident avec le vieillissement du prêt (changement de tranche d'ancienneté).
+
+![Stages IFRS 9](docs/figures/12_ifrs9_stages.png)
+![Scénarios](docs/figures/13_ecl_scenarios.png)
+
 ## Structure
 
 ```
@@ -139,5 +172,5 @@ docs/       graphiques (docs/figures), rapport et paramètres du modèle (docs/m
 - [x] Phase 1 — Base relationnelle, chargement, contrôles qualité
 - [x] Phase 2 — Analyses SQL : défauts, encours, concentrations, retards, vintages, roll rates
 - [x] Phase 3 — Modèle de PD et échelle de notation interne
-- [ ] Phase 4 — Migrations, perte attendue (PD × LGD × EAD), staging IFRS 9
+- [x] Phase 4 — Migrations, perte attendue (PD × LGD × EAD), staging IFRS 9
 - [ ] Phase 5 — Tableau de bord web (GitHub Pages) et reporting mensuel
