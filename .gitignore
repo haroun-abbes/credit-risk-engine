@@ -1,0 +1,21 @@
+# Données Freddie Mac : redistribution interdite par les conditions d'utilisation
+data/raw/*
+!data/raw/.gitkeep
+data/interim/
+data/processed/*
+!data/processed/.gitkeep
+*.duckdb
+*.duckdb.wal
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Système / éditeur
+.DS_Store
+Thumbs.db
+.vscode/
