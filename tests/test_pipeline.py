@@ -59,3 +59,23 @@ def test_phase2_analytics(tmp_path):
     figs = run("src/make_figures.py", env, "--out", str(tmp_path / "figures"))
     assert figs.returncode == 0, figs.stdout + figs.stderr
     assert len(list((tmp_path / "figures").glob("*.png"))) == 5
+
+
+def test_phase3_pd_model(tmp_path):
+    """Phase 3 : modèle de PD, notes et contrôles P01-P06."""
+    env = {**os.environ, "CRE_DATA_DIR": str(tmp_path)}
+    assert run("tests/make_fake_sample.py", env, str(tmp_path / "raw"), "1500").returncode == 0
+    assert run("src/load_freddie.py", env).returncode == 0
+    assert run("src/build_analytics.py", env).returncode == 0
+
+    train = run("src/train_pd_model.py", env, "--figures-out", str(tmp_path / "figures"),
+                "--model-out", str(tmp_path / "model"))
+    assert train.returncode == 0, train.stdout + train.stderr   # aucun contrôle P01-P04 en échec
+
+    con = duckdb.connect(str(tmp_path / "processed" / "credit_risk.duckdb"), read_only=True)
+    n, lo, hi = con.execute("SELECT count(*), min(pd_12m), max(pd_12m) FROM risk_ratings").fetchone()
+    assert n > 0 and 0 < lo and hi < 1
+    assert con.execute("SELECT count(*) FROM rating_scale").fetchone()[0] == 8
+    con.close()
+    assert (tmp_path / "model" / "pd_model_report.md").exists()
+    assert len(list((tmp_path / "figures").glob("*.png"))) == 4

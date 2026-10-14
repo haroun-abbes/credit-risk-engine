@@ -4,7 +4,7 @@ Surveillance du risque de crédit d'un portefeuille de prêts immobiliers à par
 données granulaires de Freddie Mac (Single-Family Loan-Level Dataset) : taux de défaut,
 concentrations, signaux d'alerte, migrations de notation, perte attendue et staging IFRS 9.
 
-> Projet en cours de construction. Phase actuelle : **2 — analyses du risque**.
+> Projet en cours de construction. Phase actuelle : **3 — modèle de PD et notation interne**.
 
 ## Problématique
 
@@ -49,6 +49,9 @@ python src/query.py sql/03_first_look.sql
 python src/build_analytics.py       # tables et vues d'analyse + contrôles de cohérence
 python src/query.py sql/12_phase2_report.sql
 python src/make_figures.py          # graphiques dans docs/figures/
+
+# phase 3 : modèle de PD et notation
+python src/train_pd_model.py        # modèle, notes R1-R8, rapport dans docs/model/
 ```
 
 Sans les vraies données, on peut tester toute la chaîne sur de faux fichiers :
@@ -73,7 +76,7 @@ retenu, faute d'information fiable : c'est une limite assumée.
 | Quels signes annoncent un défaut ? | Backtest de signaux : taux de défaut à 12 mois et « lift » | `sql/09_early_warning.sql` |
 | Que surveiller ce mois-ci ? | Reporting M / M-1 / M-12, segments les plus en retard | `sql/10_monthly_report.sql` |
 
-Chaque résultat passe 13 contrôles de cohérence avant d'être affiché
+Chaque résultat passe 14 contrôles de cohérence avant d'être affiché
 (`sql/11_analytics_checks.sql`) : taux entre 0 et 100 %, courbes cumulées croissantes,
 lignes de matrice à 100 %, somme des segments égale au total, etc.
 
@@ -94,21 +97,47 @@ Prêts immobiliers américains conformes (pas de crédit aux entreprises) ; pas 
 ![Courbes de vintage](docs/figures/01_vintage_curves.png)
 ![Signaux d'alerte](docs/figures/05_early_warning_signals.png)
 
+## Modèle de PD et notation interne (phase 3)
+
+**Cible** : défaut dans les 12 mois suivant une date d'observation (instantanés de janvier).
+**Méthode** : découpage des variables en classes, Weight of Evidence (WoE) et Information Value (IV),
+régression logistique avec sélection pas à pas (coefficients de signe cohérent et significatifs).
+Les variables de conjoncture (chômage, prix immobiliers) sont mesurées mais exclues du modèle
+principal : avec une seule valeur par date d'observation, elles reviennent à reconnaître l'année.
+Elles seront intégrées en phase 4 (recalibrage, scénarios IFRS 9) ; le rapport compare les deux variantes.
+**Validation** : 25 % des prêts de la période d'apprentissage (2007-2014) mis de côté, et test
+**hors période** (2015 et après) ; AUC, Gini, KS, calibration année par année, stabilité (PSI),
+comparaison à un modèle challenger (gradient boosting).
+**Notation** : échelle maîtresse à 8 classes (R1 à R8) à bornes de PD fixes, stockée dans
+`rating_scale` ; les notes de chaque prêt à chaque date sont dans `risk_ratings`.
+
+Le rapport complet, régénéré à chaque entraînement, est dans
+[`docs/model/pd_model_report.md`](docs/model/pd_model_report.md).
+
+### Résultats du modèle
+
+- **Gini de 62,3 % hors période** (2015-2025, années jamais vues à l'apprentissage), contre 70,8 % à l'apprentissage et 68,7 % en validation : pas de surapprentissage, et une bonne tenue dans le temps.
+- **La régression logistique bat le modèle challenger** (gradient boosting) hors période : AUC de 0,812 contre 0,797, avec une lisibilité classe par classe.
+- **Échelle de notation monotone** sur des années jamais vues : taux de défaut observé de 0,06 % en R1 à 29,9 % en R8 ; population stable (PSI de 0,06).
+- **Correction de deux marqueurs d'époque** : le canal de distribution, dont les codes détaillés n'existent que sur les prêts récents, a été regroupé ; le chômage et les prix immobiliers, qui reviennent à reconnaître l'année, ont été retirés du modèle principal. Gain : +9,6 points de Gini hors période et un PSI qui passe de 0,97 à 0,06.
+- **Limite assumée** : sans conjoncture, la PD surestime le niveau de risque après 2015 (1,8 % prédit contre 0,5 % observé en moyenne). Le niveau sera recalibré en phase 4, séparément du classement.
+
+![Échelle de notation](docs/figures/09_rating_scale.png)
+
 ## Structure
 
 ```
 src/        scripts Python (chargement, contrôles, requêtes)
 sql/        schéma, contrôles qualité, analyses
 tests/      générateur de faux fichiers et test de bout en bout
-notebooks/  modèle de PD (phase 3)
 app/        tableau de bord web (phase 5)
-docs/       méthodologie, définitions et graphiques (docs/figures)
+docs/       graphiques (docs/figures), rapport et paramètres du modèle (docs/model)
 ```
 
 ## Feuille de route
 
 - [x] Phase 1 — Base relationnelle, chargement, contrôles qualité
 - [x] Phase 2 — Analyses SQL : défauts, encours, concentrations, retards, vintages, roll rates
-- [ ] Phase 3 — Modèle de PD et échelle de notation interne
+- [x] Phase 3 — Modèle de PD et échelle de notation interne
 - [ ] Phase 4 — Migrations, perte attendue (PD × LGD × EAD), staging IFRS 9
 - [ ] Phase 5 — Tableau de bord web (GitHub Pages) et reporting mensuel
