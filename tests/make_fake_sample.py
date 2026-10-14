@@ -42,8 +42,10 @@ def make_loan(rng: random.Random, year: int, idx: int) -> tuple[list[str], list[
     occupancy = rng.choices(["P", "I", "S"], [85, 10, 5])[0]
     crisis = year in (2005, 2006, 2007)
 
+    # 1 % des prêts : date de 1re échéance « réinitialisée » après modification
+    reset_y, reset_m = add_months(fp_y, fp_m, 60) if rng.random() < 0.01 else (fp_y, fp_m)
     orig = [
-        "9999" if rng.random() < 0.01 else str(fico), ym(fp_y, fp_m),
+        "9999" if rng.random() < 0.01 else str(fico), ym(reset_y, reset_m),
         rng.choice(["Y", "N"]), ym(mat_y, mat_m), str(rng.randint(10000, 49999)),
         "0" if ltv <= 80 else str(rng.choice([12, 25, 30])), "1", occupancy,
         str(ltv), "999" if rng.random() < 0.02 else str(dti), str(upb), str(ltv),

@@ -1,9 +1,10 @@
-"""Exécute les contrôles qualité de sql/02_quality_checks.sql et affiche un rapport.
+"""Exécute des contrôles SQL (format « -- @check ») et affiche un rapport.
 
 Utilisation :
-    python src/run_quality_checks.py
+    python src/run_quality_checks.py                          # contrôles des données (phase 1)
+    python src/run_quality_checks.py 11_analytics_checks.sql  # contrôles des résultats (phase 2)
 
-Le rapport est aussi enregistré dans data/processed/quality_report.csv.
+Le rapport est aussi enregistré dans data/processed/ (un CSV par fichier de contrôles).
 Code de sortie 1 si un contrôle BLOQUANT échoue (utile pour l'automatisation).
 """
 from __future__ import annotations
@@ -33,33 +34,38 @@ def parse_checks(sql_text: str) -> list[dict]:
     return checks
 
 
-def run_checks(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
-    checks = parse_checks((SQL_DIR / "02_quality_checks.sql").read_text(encoding="utf-8"))
+def run_checks(con: duckdb.DuckDBPyConnection, sql_file: str = "02_quality_checks.sql") -> pd.DataFrame:
+    checks = parse_checks((SQL_DIR / sql_file).read_text(encoding="utf-8"))
     rows = []
     for c in checks:
-        n = con.execute(c["query"]).fetchone()[0]
+        n = con.execute(c["query"]).fetchone()[0] or 0
         status = "OK" if n == 0 else ("ÉCHEC" if c["severity"] == "BLOQUANT" else "ALERTE")
         rows.append({"code": c["code"], "severity": c["severity"], "status": status,
                      "anomalies": n, "description": c["description"]})
     return pd.DataFrame(rows)
 
 
-def main() -> None:
-    if not DB_PATH.exists():
-        raise SystemExit("La base n'existe pas : lance d'abord  python src/load_freddie.py")
-    con = duckdb.connect(str(DB_PATH), read_only=True)
-    report = run_checks(con)
-    con.close()
-
+def print_report(report: pd.DataFrame) -> int:
+    """Affiche le rapport et renvoie le nombre de contrôles bloquants en échec."""
     print(f"\n{'Code':<6} {'Statut':<7} {'Anomalies':>10}  Description")
     print("-" * 90)
     for r in report.itertuples():
         print(f"{r.code:<6} {r.status:<7} {r.anomalies:>10,}  {r.description}")
-    report.to_csv(DATA_PROCESSED / "quality_report.csv", index=False)
-
-    n_fail = (report["status"] == "ÉCHEC").sum()
-    n_warn = (report["status"] == "ALERTE").sum()
+    n_fail = int((report["status"] == "ÉCHEC").sum())
+    n_warn = int((report["status"] == "ALERTE").sum())
     print(f"\n{n_fail} contrôle(s) bloquant(s) en échec, {n_warn} alerte(s).")
+    return n_fail
+
+
+def main() -> None:
+    sql_file = sys.argv[1] if len(sys.argv) > 1 else "02_quality_checks.sql"
+    if not DB_PATH.exists():
+        raise SystemExit("La base n'existe pas : lance d'abord  python src/load_freddie.py")
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    report = run_checks(con, sql_file)
+    con.close()
+    report.to_csv(DATA_PROCESSED / f"report_{Path(sql_file).stem}.csv", index=False)
+    n_fail = print_report(report)
     sys.exit(1 if n_fail else 0)
 
 

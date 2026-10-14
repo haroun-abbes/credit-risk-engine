@@ -44,7 +44,8 @@ def main() -> None:
     for title, statement in split_statements(sql_text):
         if title:
             print(f"\n=== {title}")
-        print(con.sql(statement))
+        # largeur généreuse pour ne pas masquer de colonnes ; NULL affiché « – »
+        con.sql(statement).show(max_width=400, max_rows=60, max_col_width=60, null_value="–")
     con.close()
 
 
