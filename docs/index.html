@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credit Risk Analytics Engine</title>
+<meta name="description" content="Suivi du risque de crédit de 200 000 prêts immobiliers Freddie Mac : défauts, signaux d'alerte, notation interne, provision IFRS 9 et capital bâlois.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231F5FAD'/%3E%3Cpath d='M7 22 L13 15 L18 19 L25 9' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path d="M7 22 L13 15 L18 19 L25 9"/></svg>
+      <span>Credit Risk Analytics Engine</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn-ghost" id="tour-restart" type="button">Revoir la visite guidée</button>
+      <a class="btn-ghost" id="repo-link" href="#" target="_blank" rel="noopener">Code source</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero wrap" id="hero">
+    <p class="hero-kicker" id="hero-kicker"></p>
+    <h1 class="hero-title" id="hero-title">Chargement des résultats…</h1>
+    <p class="hero-sub" id="hero-sub"></p>
+    <dl class="kpis" id="kpis"></dl>
+  </section>
+
+  <nav class="chain" id="chain" aria-label="Étapes de l'analyse">
+    <div class="wrap"><ol class="chain-list" id="chain-list"></ol></div>
+  </nav>
+
+  <div id="sections"></div>
+
+  <section class="wrap method" id="methode">
+    <h2>Méthode, sources et limites</h2>
+    <div class="method-grid" id="method"></div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner" id="footer"></div>
+</footer>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<div class="pop" id="pop" role="dialog" aria-modal="false" hidden></div>
+<div class="tour" id="tour" hidden>
+  <div class="tour-spot" id="tour-spot"></div>
+  <div class="tour-card" id="tour-card" role="dialog" aria-modal="true" aria-labelledby="tour-title">
+    <div class="tour-arrow" id="tour-arrow"></div>
+    <p class="tour-step" id="tour-step"></p>
+    <h3 id="tour-title"></h3>
+    <p id="tour-text"></p>
+    <div class="tour-actions">
+      <button type="button" class="btn-link" id="tour-skip">Passer la visite</button>
+      <span class="tour-nav">
+        <button type="button" class="btn-ghost" id="tour-prev">Précédent</button>
+        <button type="button" class="btn-primary" id="tour-next">Suivant</button>
+      </span>
+    </div>
+  </div>
+</div>
+
+<noscript><p class="wrap">Ce tableau de bord a besoin de JavaScript pour afficher les graphiques.</p></noscript>
+<script src="assets/glossary.js"></script>
+<script src="assets/charts.js"></script>
+<script src="assets/tour.js"></script>
+<script src="assets/sim.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

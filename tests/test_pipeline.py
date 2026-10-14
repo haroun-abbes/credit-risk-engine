@@ -103,3 +103,28 @@ def test_phase4_ecl(tmp_path):
     con.close()
     assert (tmp_path / "model" / "ecl_report.md").exists()
     assert len(list((tmp_path / "figures").glob("1[0-3]_*.png"))) == 4
+
+
+def test_phase5_dashboard_export(tmp_path):
+    """Phase 5 : export JSON du tableau de bord (agrégats uniquement, aucune valeur absurde)."""
+    import json
+    env = {**os.environ, "CRE_DATA_DIR": str(tmp_path)}
+    assert run("tests/make_fake_sample.py", env, str(tmp_path / "raw"), "1500").returncode == 0
+    assert run("src/load_freddie.py", env).returncode == 0
+    assert run("src/build_analytics.py", env).returncode == 0
+    model = tmp_path / "model"
+    assert run("src/train_pd_model.py", env, "--figures-out", str(tmp_path / "fig"), "--model-out", str(model)).returncode == 0
+    assert run("src/build_ecl.py", env, "--model", str(model / "pd_model.json"), "--figures-out", str(tmp_path / "fig"),
+               "--model-out", str(model)).returncode == 0
+
+    out = tmp_path / "site" / "data" / "dashboard.json"
+    exp = run("src/export_dashboard.py", env, "--model", str(model / "pd_model.json"), "--out", str(out))
+    assert exp.returncode == 0, exp.stdout + exp.stderr
+    text = out.read_text(encoding="utf-8")
+    assert "NaN" not in text and "Infinity" not in text
+    D = json.loads(text)
+    assert set(D) == {"meta", "portfolio", "defaults", "signals", "model", "ifrs9", "capital", "simulator"}
+    assert abs(D["simulator"]["base"]["ecl"] - D["ifrs9"]["weighted_ecl"]) < 1
+    assert "loan_id" not in text                      # aucune donnée individuelle
+    assert 0 < D["ifrs9"]["weighted_ecl"] < D["ifrs9"]["total_ead"]
+    assert all(0 <= r["share"] <= 1 for r in D["ifrs9"]["migration"])

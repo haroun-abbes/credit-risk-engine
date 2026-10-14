@@ -462,6 +462,17 @@ def main() -> None:
     con.execute("CREATE OR REPLACE TABLE pd_calibration_by_year AS SELECT * FROM cal_df")
     con.register("scen_df", scen)
     con.execute("CREATE OR REPLACE TABLE ecl_scenarios AS SELECT * FROM scen_df")
+    drift_df = pd.DataFrame([{"period": k, **d} for k, d in drifts.items()])
+    con.register("drift_df", drift_df)
+    con.execute("CREATE OR REPLACE TABLE migration_drift AS SELECT * FROM drift_df")
+    # Paramètres du calcul, réutilisés par le simulateur du tableau de bord (phase 5)
+    sat_beta = sat["beta"] or [float("nan")] * 3
+    params = {"delta": delta, "lra": cal["lra"], "rho": RHO, "cpr": cpr, "ead_factor": ead_factor,
+              "sat_b0": sat_beta[0], "sat_b_unemp": sat_beta[1], "sat_b_hpi": sat_beta[2], "sat_r2": sat["r2"],
+              "sat_fallback": float(sat["fallback"]), "sicr_notches": SICR_NOTCHES, "sicr_min_pd": SICR_MIN_PD,
+              "pd_floor": PD_FLOOR_BASEL, "lgd_floor": LGD_FLOOR_BASEL, "max_years": MAX_YEARS}
+    con.register("par_df", pd.DataFrame([{"name": k, "value": float(v)} for k, v in params.items()]))
+    con.execute("CREATE OR REPLACE TABLE ecl_parameters AS SELECT * FROM par_df")
 
     args.model_out.mkdir(parents=True, exist_ok=True)
     args.figures_out.mkdir(parents=True, exist_ok=True)
